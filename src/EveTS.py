@@ -28,7 +28,7 @@ def build_system_adjacency_matrix(region):
     normalized_system_ids = { s:i for i,s in enumerate(systems) }
     n_systems = len(systems)
 
-    adj_mat = np.zeros((n_systems, n_systems))
+    adj_mat = np.full((n_systems, n_systems), None)
     for s1, s2 in get_adjacent_system_pairs(region):
         s1_n = normalized_system_ids[s1]
         s2_n = normalized_system_ids[s2]
