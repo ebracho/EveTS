@@ -1,3 +1,5 @@
+from __future__ import division # floating point division
+
 import sqlite3
 import numpy as np
 
@@ -67,8 +69,40 @@ def floyd_path(next_mat, u, v):
         path.append(u)
     return path
 
+def expand_floyd_path(next_mat, path): 
+    def f(u,v): 
+        if type(u) is list:
+            s1 = u[-1]
+        else:
+            s1 = u
+            u = [u]
+        return u[:-1] + floyd_path(next_mat, s1, v)
+    return reduce(f, path)
+        
+
+def greedy_ts(dist_mat, next_mat, tour_systems):
+    start_system = tour_systems[0]
+    destination_system = tour_systems[-1]
+
+    route = [start_system]
+    unvisited = set(tour_systems).difference(set(route))
+
+    # Maximize
+    def cost(next_system):
+        subroute = floyd_path(next_mat, route[-1], next_system)
+        new_systems = set(subroute).intersection(unvisited)
+        return len(new_systems)/len(subroute)
+
+    while unvisited:
+        next_system = max(unvisited, key=cost)
+        subroute = floyd_path(next_mat, route[-1], next_system)
+        unvisited = unvisited.difference(subroute)
+        route.append(next_system)
+
+    return expand_floyd_path(next_mat, route)
+
 adj_mat = build_system_adjacency_matrix('The Bleak Lands')
 dist_mat, next_mat = floyd_apsp(adj_mat)
-print(floyd_path(next_mat, 1, 4))
+print(greedy_ts(dist_mat, next_mat, [2,4,6,8]))
 
 conn.close()
