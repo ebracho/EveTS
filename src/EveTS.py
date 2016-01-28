@@ -7,27 +7,38 @@ conn = sqlite3.connect('../db/universeDataDx.db')
 cursor = conn.cursor()
 
 def get_region_id(region):
-    cursor.execute("""SELECT regionID FROM mapRegions 
-                      WHERE regionName=?""", (region,))
+    cursor.execute('''SELECT regionID FROM mapRegions 
+                      WHERE regionName=?''', (region,))
     return cursor.fetchone()[0]
 
 def get_systems(region):
     region_id = get_region_id(region)
-    cursor.execute("""SELECT solarSystemID from mapSolarSystems
-                      WHERE regionID=?""", (region_id,))
+    cursor.execute('''SELECT solarSystemID from mapSolarSystems
+                      WHERE regionID=?''', (region_id,))
     return [res[0] for res in cursor.fetchall()]
+
+def get_system_name(system_id):
+    cursor.execute('''SELECT solarSystemName FROM mapSolarSystems 
+                      WHERE solarSystemID=?''', (system_id,))
+    return cursor.fetchone()[0]
+
+def get_system_id(system_name):
+    cursor.execute('''SELECT solarSystemID FROM mapSolarSystems 
+                      WHERE solarSystemName=?''', (system_name,))
+    return cursor.fetchone()[0]
 
 def get_adjacent_system_pairs(region):
     region_id = get_region_id(region)
-    cursor.execute("""SELECT fromSolarSystemID, toSolarSystemID 
+    cursor.execute('''SELECT fromSolarSystemID, toSolarSystemID 
                       FROM mapSolarSystemJumps
-                      WHERE fromRegionID=? AND toRegionID=?""", 
+                      WHERE fromRegionID=? AND toRegionID=?''', 
                    (region_id, region_id))
     return cursor.fetchall()
 
-def build_system_adjacency_matrix(region):
-    systems = get_systems(region)
-    normalized_system_ids = { s:i for i,s in enumerate(systems) }
+def get_normalized_ids(ids):
+    return { s:i for i,s in enumerate(ids) }
+
+def build_system_adjacency_matrix(region, systems, normalized_system_ids):
     n_systems = len(systems)
 
     adj_mat = np.full((n_systems, n_systems), np.nan)
@@ -101,8 +112,24 @@ def greedy_ts(dist_mat, next_mat, tour_systems):
 
     return expand_floyd_path(next_mat, route)
 
-adj_mat = build_system_adjacency_matrix('The Bleak Lands')
-dist_mat, next_mat = floyd_apsp(adj_mat)
-print(greedy_ts(dist_mat, next_mat, [2,4,6,8]))
+
+
+def main():
+    region = raw_input('Region: ')
+    tour = raw_input('Tour: ').split(' ')
+
+    systems = get_systems(region)
+    normalized_system_ids = get_normalized_ids(systems)
+    adj_mat = build_system_adjacency_matrix(region, systems, normalized_system_ids)
+    dist_mat, next_mat = floyd_apsp(adj_mat)
+
+    normalized_tour_ids = map(lambda x: normalized_system_ids[x], map(get_system_id, tour))
+    route = greedy_ts(dist_mat, next_mat, normalized_tour_ids)
+
+    unnormalized_route = map(lambda x: systems[x], route)
+    named_route = map(get_system_name, unnormalized_route)
+    print(named_route)
+
+main()
 
 conn.close()
