@@ -6,4 +6,4 @@ A tool for constructing optimal tours of systems in Eve Online.
 2. ~~Implement Floyd-Warshall to find shortest path between all pairs of systems.~~ 
 3. Research and implement a Travelling Salesman approximator. 
     * ~~Implement greedy algorithm~~
-    * Implement branch-and-bound algorithm
+    * ~~Implement branch-and-bound algorithm~~

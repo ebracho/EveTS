@@ -2,6 +2,7 @@ from __future__ import division # floating point division
 
 import sqlite3
 import numpy as np
+from collections import namedtuple
 
 conn = sqlite3.connect('../db/universeDataDx.db')
 cursor = conn.cursor()
@@ -11,7 +12,7 @@ def get_region_id(region):
                       WHERE regionName=?''', (region,))
     return cursor.fetchone()[0]
 
-def get_systems(region):
+def get_system_ids(region):
     region_id = get_region_id(region)
     cursor.execute('''SELECT solarSystemID from mapSolarSystems
                       WHERE regionID=?''', (region_id,))
@@ -89,7 +90,6 @@ def expand_floyd_path(next_mat, path):
             u = [u]
         return u[:-1] + floyd_path(next_mat, s1, v)
     return reduce(f, path)
-        
 
 def greedy_ts(dist_mat, next_mat, tour_systems):
     start_system = tour_systems[0]
@@ -113,22 +113,78 @@ def greedy_ts(dist_mat, next_mat, tour_systems):
     return expand_floyd_path(next_mat, route)
 
 
+# Bounded depth-first-search of solution space
+# Feasable for tours with < 60 stops
+# Returns [] when no sufficient route is found
+def branch_and_bound_ts(next_mat, tour, goal, start, finish):
+    SearchState = namedtuple('SearchState', ['route', 'unvisited', 'length'])
+    search_stack = [ SearchState([start], set(tour).difference([start]), 1) ]
+    
+    def visit(search_state, destination):
+        subroute = floyd_path(next_mat, search_state.route[-1], destination)
+        new_unvisited = search_state.unvisited.difference(subroute)
+        new_route = search_state.route + [destination]
+        new_length = search_state.length + len(subroute) - 1
+        return SearchState(new_route, new_unvisited, new_length)
+
+    def solution(search_state):
+        subroute = floyd_path(next_mat, search_state.route[-1], finish)
+        new_unvisited = search_state.unvisited.difference(subroute)
+        new_length = search_state.length + len(subroute) - 1
+        return (new_length <= goal) and (len(new_unvisited) == 0)
+
+    def bound(search_state):
+        return search_state.length <= goal
+
+    def branch(search_state):
+        for node in search_state.unvisited:
+            new_search_state = visit(search_state, node)
+            if bound(new_search_state):
+                search_stack.insert(0, (new_search_state))
+                if solution(new_search_state):
+                    return new_search_state
+
+    while search_stack:
+        solution_state = branch(search_stack.pop())
+        if solution_state:
+            return expand_floyd_path(next_mat, solution_state.route + [finish])
+
+    return []
 
 def main():
-    region = raw_input('Region: ')
-    tour = raw_input('Tour: ').split(' ')
+    region = raw_input()
+    start_system = raw_input()
+    end_system = raw_input()
+    tour = raw_input().split(' ')
 
-    systems = get_systems(region)
-    normalized_system_ids = get_normalized_ids(systems)
-    adj_mat = build_system_adjacency_matrix(region, systems, normalized_system_ids)
+    tour = set(tour + [start_system] + [end_system])
+    system_ids = get_system_ids(region)
+
+    for system in tour:
+        try:
+            system_id = get_system_id(system)
+        except: 
+            print("%s is not a known system" % system)
+            return
+        if not system_id in system_ids:
+            print("%s not found in region (%s)" % (system, region))
+            return
+
+    normalized_system_ids = get_normalized_ids(system_ids)
+    adj_mat = build_system_adjacency_matrix(region, system_ids, normalized_system_ids)
     dist_mat, next_mat = floyd_apsp(adj_mat)
 
     normalized_tour_ids = map(lambda x: normalized_system_ids[x], map(get_system_id, tour))
-    route = greedy_ts(dist_mat, next_mat, normalized_tour_ids)
+    route = branch_and_bound_ts(next_mat, normalized_tour_ids, 8, 0, 0)
 
-    unnormalized_route = map(lambda x: systems[x], route)
+    unnormalized_route = map(lambda x: system_ids[x], route)
     named_route = map(get_system_name, unnormalized_route)
+
     print(named_route)
+    """
+    print(len(tour))
+    print(len(route))
+    """
 
 main()
 
