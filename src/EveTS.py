@@ -91,7 +91,7 @@ def expand_floyd_path(next_mat, path):
         return u[:-1] + floyd_path(next_mat, s1, v)
     return reduce(f, path)
 
-def greedy_ts(dist_mat, next_mat, tour_systems):
+def greedy_ts(next_mat, tour_systems):
     start_system = tour_systems[0]
     destination_system = tour_systems[-1]
 
@@ -113,12 +113,12 @@ def greedy_ts(dist_mat, next_mat, tour_systems):
     return expand_floyd_path(next_mat, route)
 
 
-# Bounded depth-first-search of solution space
+# Bounded breadth-first-search of solution space
 # Feasable for tours with < 60 stops
 # Returns [] when no sufficient route is found
 def branch_and_bound_ts(next_mat, tour, goal, start, finish):
     SearchState = namedtuple('SearchState', ['route', 'unvisited', 'length'])
-    search_stack = [ SearchState([start], set(tour).difference([start]), 1) ]
+    search_queue = [ SearchState([start], set(tour).difference([start]), 1) ]
     
     def visit(search_state, destination):
         subroute = floyd_path(next_mat, search_state.route[-1], destination)
@@ -140,12 +140,12 @@ def branch_and_bound_ts(next_mat, tour, goal, start, finish):
         for node in search_state.unvisited:
             new_search_state = visit(search_state, node)
             if bound(new_search_state):
-                search_stack.insert(0, (new_search_state))
+                search_stack.insert(0, new_search_state)
                 if solution(new_search_state):
                     return new_search_state
 
-    while search_stack:
-        solution_state = branch(search_stack.pop())
+    while search_queue:
+        solution_state = branch(search_queue.pop())
         if solution_state:
             return expand_floyd_path(next_mat, solution_state.route + [finish])
 
@@ -156,6 +156,7 @@ def main():
     start_system = raw_input()
     end_system = raw_input()
     tour = raw_input().split(' ')
+    goal = int(raw_input())
 
     tour = set(tour + [start_system] + [end_system])
     system_ids = get_system_ids(region)
@@ -175,16 +176,12 @@ def main():
     dist_mat, next_mat = floyd_apsp(adj_mat)
 
     normalized_tour_ids = map(lambda x: normalized_system_ids[x], map(get_system_id, tour))
-    route = branch_and_bound_ts(next_mat, normalized_tour_ids, 8, 0, 0)
+    route = branch_and_bound_ts(next_mat, normalized_tour_ids, goal, 0, 0)
 
     unnormalized_route = map(lambda x: system_ids[x], route)
     named_route = map(get_system_name, unnormalized_route)
 
     print(named_route)
-    """
-    print(len(tour))
-    print(len(route))
-    """
 
 main()
 
