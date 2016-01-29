@@ -140,7 +140,7 @@ def branch_and_bound_ts(next_mat, tour, goal, start, finish):
         for node in search_state.unvisited:
             new_search_state = visit(search_state, node)
             if bound(new_search_state):
-                search_stack.insert(0, new_search_state)
+                search_queue.insert(0, new_search_state)
                 if solution(new_search_state):
                     return new_search_state
 
@@ -175,13 +175,18 @@ def main():
     adj_mat = build_system_adjacency_matrix(region, system_ids, normalized_system_ids)
     dist_mat, next_mat = floyd_apsp(adj_mat)
 
+    normalized_start_id = normalized_system_ids[get_system_id(start_system)]
+    normalized_end_id = normalized_system_ids[get_system_id(end_system)]
     normalized_tour_ids = map(lambda x: normalized_system_ids[x], map(get_system_id, tour))
-    route = branch_and_bound_ts(next_mat, normalized_tour_ids, goal, 0, 0)
+
+    route = branch_and_bound_ts(next_mat, normalized_tour_ids, goal, 
+                                normalized_start_id, normalized_end_id)
 
     unnormalized_route = map(lambda x: system_ids[x], route)
     named_route = map(get_system_name, unnormalized_route)
 
-    print(named_route)
+    for system in named_route:
+        print(system + ('*' if system in tour else ''))
 
 main()
 
