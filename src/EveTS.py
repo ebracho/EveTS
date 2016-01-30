@@ -36,6 +36,32 @@ def get_adjacent_system_pairs(region):
                    (region_id, region_id))
     return cursor.fetchall()
 
+def connected(*region_ids):
+
+    def connected_pair(rid_1, rid_2):
+        cursor.execute('''SELECT * FROM mapSolarSystemJumps 
+                          WHERE fromRegionID=? AND toRegionID=?''',
+                       (rid_1, rid_2))
+        return cursor.fetchone() is not None
+
+    regions = list(region_ids)
+    connected_regions = [ regions.pop() ]
+    n_disconnected_regions = 0
+
+    while regions:
+        next_region = regions.pop()
+        if any(map(lambda region: connected_pair(region, next_region), connected_regions)):
+            connected_regions.append(next_region)
+            n_disconnected_regions = 0
+        else:
+            regions.append(next_region)
+            n_disconnected_regions += 1
+            if n_disconnected_regions == len(regions):
+                return False
+
+    return True
+
+
 def get_normalized_ids(ids):
     return { s:i for i,s in enumerate(ids) }
 
@@ -128,10 +154,8 @@ def branch_and_bound_ts(next_mat, tour, goal, start, finish):
         return SearchState(new_route, new_unvisited, new_length)
 
     def solution(search_state):
-        subroute = floyd_path(next_mat, search_state.route[-1], finish)
-        new_unvisited = search_state.unvisited.difference(subroute)
-        new_length = search_state.length + len(subroute) - 1
-        return (new_length <= goal) and (len(new_unvisited) == 0)
+        route = visit(search_state, finish)
+        return (route.length <= goal) and (len(route.unvisited) == 0)
 
     def bound(search_state):
         return search_state.length <= goal
