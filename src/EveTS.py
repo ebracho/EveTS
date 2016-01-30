@@ -12,10 +12,12 @@ def get_region_id(region):
                       WHERE regionName=?''', (region,))
     return cursor.fetchone()[0]
 
-def get_system_ids(region):
-    region_id = get_region_id(region)
+def get_system_ids(*regions):
+    print(regions)
+    region_ids = map(get_region_id, regions)
+    print(region_ids)
     cursor.execute('''SELECT solarSystemID from mapSolarSystems
-                      WHERE regionID=?''', (region_id,))
+                      WHERE regionID=?''', region_ids)
     return [res[0] for res in cursor.fetchall()]
 
 def get_system_name(system_id):
@@ -29,11 +31,12 @@ def get_system_id(system_name):
     return cursor.fetchone()[0]
 
 def get_adjacent_system_pairs(region):
-    region_id = get_region_id(region)
+    region_ids = map(get_region_id, regions)
     cursor.execute('''SELECT fromSolarSystemID, toSolarSystemID 
                       FROM mapSolarSystemJumps
-                      WHERE fromRegionID=? AND toRegionID=?''', 
-                   (region_id, region_id))
+                      WHERE fromRegionID IN ({0}) 
+                      AND toRegionID IN ({0})'''.format(', '.join('?'*len(regions))),
+                   2*region_ids)
     return cursor.fetchall()
 
 def connected(*region_ids):
@@ -65,7 +68,7 @@ def connected(*region_ids):
 def get_normalized_ids(ids):
     return { s:i for i,s in enumerate(ids) }
 
-def build_system_adjacency_matrix(region, systems, normalized_system_ids):
+def build_system_adjacency_matrix(regions, systems, normalized_system_ids):
     n_systems = len(systems)
 
     adj_mat = np.full((n_systems, n_systems), np.nan)
@@ -176,14 +179,14 @@ def branch_and_bound_ts(next_mat, tour, goal, start, finish):
     return []
 
 def main():
-    region = raw_input()
+    regions = raw_input().split('|')
     start_system = raw_input()
     end_system = raw_input()
-    tour = raw_input().split(' ')
+    tour = raw_input().split('|')
     goal = int(raw_input())
 
     tour = set(tour + [start_system] + [end_system])
-    system_ids = get_system_ids(region)
+    system_ids = get_system_ids(*regions)
 
     for system in tour:
         try:
@@ -196,7 +199,7 @@ def main():
             return
 
     normalized_system_ids = get_normalized_ids(system_ids)
-    adj_mat = build_system_adjacency_matrix(region, system_ids, normalized_system_ids)
+    adj_mat = build_system_adjacency_matrix(regions, system_ids, normalized_system_ids)
     dist_mat, next_mat = floyd_apsp(adj_mat)
 
     normalized_start_id = normalized_system_ids[get_system_id(start_system)]
