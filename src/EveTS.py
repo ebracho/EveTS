@@ -5,17 +5,6 @@ from graph import *
 def get_normalized_ids(ids):
     return { s:i for i,s in enumerate(ids) }
 
-def build_system_adjacency_matrix(region, systems, normalized_system_ids):
-    n_systems = len(systems)
-
-    adj_mat = np.full((n_systems, n_systems), np.nan)
-    for s1, s2 in get_adjacent_system_pairs(region):
-        s1_n = normalized_system_ids[s1]
-        s2_n = normalized_system_ids[s2]
-        adj_mat[s1_n][s2_n] = 1
-        
-    return adj_mat
-
 def main():
     region = raw_input()
     start_system = raw_input()
@@ -55,7 +44,7 @@ def main():
     route = branch_and_bound_ts(next_mat, normalized_tour_ids, goal, 
                                 normalized_start_system, normalized_end_system)
 
-    # Map back to unormalized system data
+    # Map back to unnormalized system data
     unnormalized_route = map(lambda x: system_ids[x], route)
     named_route = map(get_system_name, unnormalized_route)
 
