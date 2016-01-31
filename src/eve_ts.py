@@ -1,4 +1,3 @@
-import numpy as np
 from universe_queries import *
 from graph import *
 
