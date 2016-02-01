@@ -62,5 +62,5 @@ class SetDeque:
         return self.queue.__reversed__()
 
     def __contains__(self, value):
-        return self.history.__contain__(value)
+        return self.history.__contains__(value)
 
