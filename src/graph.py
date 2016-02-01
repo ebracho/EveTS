@@ -1,6 +1,7 @@
 from __future__ import division # floating point division
 import numpy as np
-from collections import namedtuple
+from collections import deque, namedtuple
+from setdeque import SetDeque
 
 def build_adjacency_matrix(n_nodes, edges):
     adj_mat = np.full((n_nodes, n_nodes), np.nan)
@@ -50,7 +51,6 @@ def expand_floyd_path(next_mat, path):
     return reduce(f, path)
 
 def greedy_ts(next_mat, tour):
-
     if not tour: 
         return []
 
@@ -76,12 +76,12 @@ def greedy_ts(next_mat, tour):
 # Returns [] when no sufficient route is found
 def branch_and_bound_ts(next_mat, tour, goal, start, finish):
     SearchState = namedtuple('SearchState', ['route', 'unvisited', 'length'])
-    search_queue = [ SearchState([start], set(tour).difference([start]), 1) ]
-    
+    search_queue = SetDeque([SearchState((start,), frozenset(tour).difference([start]), 1)])
+
     def visit(search_state, destination):
         subroute = floyd_path(next_mat, search_state.route[-1], destination)
         new_unvisited = search_state.unvisited.difference(subroute)
-        new_route = search_state.route + [destination]
+        new_route = search_state.route + (destination,)
         new_length = search_state.length + len(subroute) - 1
         return SearchState(new_route, new_unvisited, new_length)
 
@@ -103,7 +103,7 @@ def branch_and_bound_ts(next_mat, tour, goal, start, finish):
     while search_queue:
         solution_state = branch(search_queue.pop())
         if solution_state:
-            return expand_floyd_path(next_mat, solution_state.route + [finish])
+            return expand_floyd_path(next_mat, solution_state.route + (finish,))
 
     return []
 
