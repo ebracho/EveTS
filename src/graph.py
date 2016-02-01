@@ -76,7 +76,8 @@ def greedy_ts(next_mat, tour):
 # Returns [] when no sufficient route is found
 def branch_and_bound_ts(next_mat, tour, goal, start, finish):
     SearchState = namedtuple('SearchState', ['route', 'unvisited', 'length'])
-    search_queue = SetDeque([SearchState((start,), frozenset(tour).difference([start]), 1)])
+    start_state = SearchState((start,), frozenset(tour).difference([start]), 1)
+    search_queue = SetDeque([start_state])
 
     def visit(search_state, destination):
         subroute = floyd_path(next_mat, search_state.route[-1], destination)
